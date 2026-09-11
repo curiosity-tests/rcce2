@@ -1,4 +1,5 @@
 name: CI
+run-name: "CI ${{ inputs.leg || github.event_name }} ${{ inputs.racecar_run }}"
 
 on:
   pull_request:
@@ -7,7 +8,24 @@ on:
       - master
       - develop
   workflow_dispatch:
+    inputs:
+      leg:
+        description: "baseline (uninstrumented) or instrumented (under chalk/curiosity)"
+        type: choice
+        options: [instrumented, baseline]
+        default: baseline
+      profile:
+        description: "CrashOverride chalk profile"
+        type: string
+        default: curiosity-tests-racecar
+      racecar_run:
+        description: "racecar correlation token, echoed into the run name"
+        type: string
+        default: ""
 
+
+env:
+  CHALK_ON: ${{ inputs.leg == 'instrumented' }}
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -17,6 +35,7 @@ permissions:
 
 jobs:
   build-and-test:
+    if: false   # racecar: non-Linux runner, not measured here
     name: Build and test
     runs-on: windows-latest
     timeout-minutes: 30
@@ -47,6 +66,7 @@ jobs:
       # compiler build or packaging work. This catches CMD label/delegation
       # regressions while proving that help cannot create release output.
       - name: Smoke-test Windows publish help
+        continue-on-error: true   # racecar: scan/report/push step, must not fail the build
         shell: cmd
         run: |
           call publish.bat --help
